@@ -107,6 +107,7 @@ import { RewindMenu, type RewindMode } from "@/components/rewind/rewind-menu";
 import { useRewindAgentMutation } from "@/components/rewind/use-rewind-agent-mutation";
 import { AssistantForkMenu, type AssistantForkTarget } from "@/components/assistant-fork-menu";
 import { useRetainedPanelActive } from "@/components/retained-panel";
+import { UserMessageText } from "@/components/user-message-text";
 import {
   markdownCopyDataSet,
   markdownCopyImageDataSet,
@@ -545,9 +546,13 @@ export const UserMessage = memo(function UserMessage({
             </View>
           ) : null}
           {hasText ? (
-            <Text selectable style={userMessageStylesheet.text} dataSet={MESSAGE_TEXT_DATASET}>
-              {message}
-            </Text>
+            <UserMessageText
+              serverId={serverId}
+              agentId={agentId}
+              message={message}
+              style={userMessageStylesheet.text}
+              dataSet={MESSAGE_TEXT_DATASET}
+            />
           ) : null}
         </View>
         {hasText ? (
