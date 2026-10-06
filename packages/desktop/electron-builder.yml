@@ -37,8 +37,8 @@ extraResources:
     to: editor-target-icons
 publish:
   provider: github
-  owner: getpaseo
-  repo: paseo
+  owner: mathiaskk
+  repo: parseo
 mac:
   artifactName: "Paseo-${version}-${arch}.${ext}"
   minimumSystemVersion: "13.0.0"
