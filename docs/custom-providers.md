@@ -319,6 +319,31 @@ Example: two different Anthropic accounts as separate profiles:
 
 Each profile appears as a separate provider in the Paseo app. You can select which one to use when launching an agent.
 
+Providers that extend the same built-in form a family. When a family has more than one enabled provider, the new-agent composer shows an account picker before the model button. Switching keeps the selected model, thinking option, mode and features. A running agent shows its provider's label in the same place, because an agent cannot move to another provider's process.
+
+### Claude subscription accounts
+
+To use a second Claude Pro or Max subscription, give it its own Claude Code config directory instead of an API key:
+
+```json
+{
+  "agents": {
+    "providers": {
+      "claude": { "label": "Claude Max" },
+      "claude-pro": {
+        "extends": "claude",
+        "label": "Claude Pro",
+        "env": { "CLAUDE_CONFIG_DIR": "/home/you/.claude-pro" }
+      }
+    }
+  }
+}
+```
+
+Log in once with `CLAUDE_CONFIG_DIR=/home/you/.claude-pro claude`, then `/login`. Paseo passes `env` values through unchanged, so use an absolute path. Symlink `settings.json`, `CLAUDE.md`, `skills` and `plugins` from `~/.claude` if both accounts should behave the same. User-scoped MCP servers and session history live in `.claude.json` and `projects/` inside each directory and are not shared, so an agent cannot resume on the other account.
+
+The daemon discovers usage for every provider in a family with custom members using that provider's launch env (`ProviderSnapshotManager.listProviderUsageScopes`), so each account shows in the sidebar usage card and next to its name in the account picker without a running agent.
+
 You can also combine profiles with model overrides to pin specific models per profile:
 
 ```json

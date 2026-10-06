@@ -118,6 +118,8 @@ export interface ProviderSnapshotEntry {
   status: ProviderStatus;
   enabled: boolean;
   source?: "builtin" | "custom";
+  /** The registered provider a custom provider extends, e.g. "claude". */
+  extends?: string;
   error?: string;
   models?: AgentModelDefinition[];
   modes?: AgentMode[];

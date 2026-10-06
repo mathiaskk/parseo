@@ -1,6 +1,7 @@
 import type { UserComposerAttachment } from "@/attachments/types";
 import type { DraftAgentControlsProps } from "@/composer/agent-controls";
 import type { UseAgentFormStateResult } from "@/hooks/use-agent-form-state";
+import { buildProviderAccountOptions } from "@/provider-selection/provider-accounts";
 
 export interface DraftKeyContext {
   selectedServerId: string | null;
@@ -23,9 +24,17 @@ export function buildDraftAgentControls(input: {
   features?: DraftAgentControlsProps["features"];
   onSetFeature?: DraftAgentControlsProps["onSetFeature"];
   onApplyAgentProfile: DraftAgentControlsProps["onApplyAgentProfile"];
+  onSwitchAccount?: DraftAgentControlsProps["onSwitchAccount"];
   onDropdownClose?: DraftAgentControlsProps["onDropdownClose"];
 }): DraftAgentControlsProps {
-  const { formState, features, onSetFeature, onApplyAgentProfile, onDropdownClose } = input;
+  const {
+    formState,
+    features,
+    onSetFeature,
+    onApplyAgentProfile,
+    onSwitchAccount,
+    onDropdownClose,
+  } = input;
   return {
     providerDefinitions: formState.providerDefinitions,
     selectedProvider: formState.selectedProvider,
@@ -43,6 +52,11 @@ export function buildDraftAgentControls(input: {
     selectedThinkingOptionId: formState.selectedThinkingOptionId,
     onSelectThinkingOption: formState.setThinkingOptionFromUser,
     onApplyAgentProfile,
+    accountOptions: buildProviderAccountOptions(
+      formState.allProviderEntries ?? [],
+      formState.selectedProvider,
+    ),
+    onSwitchAccount,
     features,
     onSetFeature,
     onDropdownClose,

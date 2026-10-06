@@ -28,11 +28,15 @@ interface KnownReport {
   source: UsageSource;
   logins: [Login, ...Login[]];
   label?: string;
+  /** Configured providers whose launch env found this account. */
+  providerIds?: string[];
 }
 
 export interface AgentUsageLookup {
   hasAgent(id: string): boolean;
   usageSession(id: string): AgentUsageSession | null;
+  /** Session scopes discovered alongside the global one, so their accounts list without an agent. */
+  providerScopes?(): Array<{ providerId: string; provider: string; env: Record<string, string> }>;
 }
 
 export interface ListUsageReportsOptions {
@@ -96,7 +100,7 @@ export class UsageSourceRegistry {
     } else if (options.reportIds !== undefined) {
       ids = options.reportIds;
     } else {
-      this.defaults = await this.discover({ kind: "global" });
+      this.defaults = await this.discoverDefaults();
       this.mergeKnown();
       ids = [...this.known.keys()];
     }
@@ -112,6 +116,27 @@ export class UsageSourceRegistry {
         ];
       }),
     );
+  }
+
+  private async discoverDefaults(): Promise<Map<string, KnownReport>> {
+    const providerScopes = this.agents.providerScopes?.() ?? [];
+    const discovered = await Promise.all([
+      this.discover({ kind: "global" }),
+      ...providerScopes.map(async ({ providerId, provider, env }) => {
+        const reports = await this.discover({ kind: "session", provider, env });
+        for (const report of reports.values()) report.providerIds = [providerId];
+        return reports;
+      }),
+    ]);
+    const merged = new Map<string, KnownReport>();
+    for (const reports of discovered) {
+      for (const [id, report] of reports) {
+        const known = merged.get(id);
+        if (known) mergeReport(known, report);
+        else merged.set(id, report);
+      }
+    }
+    return merged;
   }
 
   private pruneAgents(): void {
@@ -158,14 +183,13 @@ export class UsageSourceRegistry {
       for (const [id, report] of reports) {
         if (this.sources.get(report.source.id) !== report.source) continue;
         const known = this.known.get(id);
-        if (!known) {
-          this.known.set(id, { ...report, logins: [...report.logins] });
-          continue;
-        }
-        for (const login of report.logins) {
-          if (!known.logins.some((existing) => loginKey(existing) === loginKey(login)))
-            known.logins.push(login);
-        }
+        if (known) mergeReport(known, report);
+        else
+          this.known.set(id, {
+            ...report,
+            logins: [...report.logins],
+            ...(report.providerIds ? { providerIds: [...report.providerIds] } : {}),
+          });
       }
     }
   }
@@ -236,7 +260,7 @@ export class UsageSourceRegistry {
   private fetchId(id: string, known: KnownReport, forceRefresh = false): Promise<UsageReportEntry> {
     // Account identity groups cards; the ordered login set identifies a fetch result.
     const cacheKey = `${id}:${createHash("sha256")
-      .update(JSON.stringify([known.label, known.logins.map(loginKey)]))
+      .update(JSON.stringify([known.label, known.logins.map(loginKey), known.providerIds ?? []]))
       .digest("hex")}`;
     const cached = this.cache.get(cacheKey);
     if (!forceRefresh && cached && this.now() - cached.at < this.ttlMs)
@@ -250,6 +274,7 @@ export class UsageSourceRegistry {
         sourceLabel: known.source.label,
         icon: known.source.icon,
         account: { label: known.label },
+        ...(known.providerIds ? { providerIds: known.providerIds } : {}),
         fetchedAt: new Date(this.now()).toISOString(),
         ...(await this.fetchWithFallback(known)),
       };
@@ -336,6 +361,17 @@ function legacyError(report: UsageReport, now: number): string | null {
   if (report.status === "error") return report.error;
   if (report.status === "unavailable") return legacyProblem(report.problem, now);
   return null;
+}
+
+function mergeReport(known: KnownReport, report: KnownReport): void {
+  for (const login of report.logins) {
+    if (!known.logins.some((existing) => loginKey(existing) === loginKey(login)))
+      known.logins.push(login);
+  }
+  for (const providerId of report.providerIds ?? []) {
+    known.providerIds ??= [];
+    if (!known.providerIds.includes(providerId)) known.providerIds.push(providerId);
+  }
 }
 
 // Inputs are opaque JSON locators. Canonical equality deduplicates discovery across scopes.

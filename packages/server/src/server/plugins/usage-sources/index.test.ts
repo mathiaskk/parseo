@@ -556,3 +556,33 @@ test("a hung login records its own timeout and still tries the next login", asyn
     { harness: "OpenCode", report: { status: "error", error: "Login rejected" } },
   ]);
 });
+
+test("lists each configured provider's account, tagged with the providers that use it", async () => {
+  const registry = new UsageSourceRegistry(
+    Date.now,
+    300_000,
+    { warn: () => {} },
+    {
+      hasAgent: () => false,
+      usageSession: () => null,
+      providerScopes: () => [
+        { providerId: "claude", provider: "claude", env: {} },
+        { providerId: "claude-alt", provider: "claude", env: { CLAUDE_CONFIG_DIR: "/alt" } },
+      ],
+    },
+  );
+  registry.register({
+    id: "claude",
+    label: "Claude",
+    discover: async (scope) =>
+      scope.kind === "session" && scope.env.CLAUDE_CONFIG_DIR
+        ? [{ key: "pro", label: "pro@example.com", input: { dir: scope.env.CLAUDE_CONFIG_DIR } }]
+        : [{ key: "max", label: "max@example.com", input: { dir: "default" } }],
+    fetch: async () => ({ status: "available", windows: [] }),
+  });
+  const reports = await registry.listReports();
+  expect(reports.map((entry) => [entry.id, entry.account.label, entry.providerIds])).toEqual([
+    ["claude:max", "max@example.com", ["claude"]],
+    ["claude:pro", "pro@example.com", ["claude-alt"]],
+  ]);
+});

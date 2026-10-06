@@ -331,6 +331,7 @@ export const ProviderSnapshotEntrySchema = z.object({
   status: ProviderStatusSchema,
   enabled: z.boolean().optional().default(true),
   source: z.enum(["builtin", "custom"]).optional(),
+  extends: z.string().optional(),
   error: z.string().optional(),
   models: z.array(AgentModelDefinitionSchema).optional(),
   modes: z.array(AgentModeSchema).optional(),
@@ -6284,6 +6285,8 @@ export const UsageReportSchema = z.discriminatedUnion("status", [
 export const UsageReportEntrySchema = z.object({
   id: z.string(),
   account: z.object({ label: z.string().optional() }),
+  /** Configured agent providers that run under this account, e.g. ["claude-alt"]. */
+  providerIds: z.array(z.string()).optional(),
   fetchedAt: z.string(),
   sourceId: z.string(),
   sourceLabel: z.string(),

@@ -54,6 +54,7 @@ import { MobilePanelOverlay } from "@/mobile-panels/presentation";
 import { buildSettingsAddHostRoute, buildSettingsRoute } from "@/utils/host-routes";
 import { openHostOverview } from "@/navigation/settings-navigation";
 import {
+  SidebarUsageCard,
   UsageSidebarItem,
   UsageSidebarRoot,
   useHasUsageSummary,
@@ -585,6 +586,8 @@ function MobileSidebar({
           </Pressable>
         </WindowChromeSafeArea>
 
+        <SidebarUsageCard onBeforeOpen={closeSidebar} />
+
         {isInitialLoad && !hasActiveHostFilter ? (
           <SidebarAgentListSkeleton />
         ) : (
@@ -762,6 +765,8 @@ function DesktopSidebar({
           )}
           <SidebarNavRows style={sidebarHeaderGroupStyle} />
         </View>
+
+        <SidebarUsageCard />
 
         {isInitialLoad && !hasActiveHostFilter ? (
           <SidebarAgentListSkeleton />

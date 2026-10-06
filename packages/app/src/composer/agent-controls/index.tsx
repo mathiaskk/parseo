@@ -24,7 +24,7 @@ import {
 import { StyleSheet, useUnistyles } from "react-native-unistyles";
 import { useShallow } from "zustand/shallow";
 import { Settings2 } from "lucide-react-native";
-import { getAgentFeatureIcon, ThinkingIcon } from "@/agent-controls/icons";
+import { AccountIcon, getAgentFeatureIcon, ThinkingIcon } from "@/agent-controls/icons";
 import { formatThinkingOptionLabel } from "@/agent-controls/labels";
 import { ComboboxTrigger } from "@/components/ui/combobox-trigger";
 import { CombinedModelSelector } from "@/components/combined-model-selector";
@@ -34,6 +34,7 @@ import {
   type ProviderSelectorProvider,
 } from "@/provider-selection/provider-selection";
 import { filterSelectableModels } from "@/provider-selection/model-catalog";
+import { buildProviderAccountOptions } from "@/provider-selection/provider-accounts";
 import { useSessionStore } from "@/stores/session-store";
 import { useProvidersSnapshot } from "@/hooks/use-providers-snapshot";
 import { resolveProviderDefinition } from "@/utils/provider-definitions";
@@ -92,10 +93,12 @@ import {
   type DraftAgentProfileControls,
 } from "@/agent-profiles";
 import { buildSettingsHostSectionRoute } from "@/utils/host-routes";
+import { useProviderUsageDescriptions } from "@/usage";
 
 interface AgentControlOption {
   id: string;
   label: string;
+  description?: string;
 }
 
 type AgentControlSelector = "provider" | "mode" | "model" | "thinking" | `feature-${string}`;
@@ -104,6 +107,8 @@ const EMPTY_AGENT_PROVIDER_DEFINITIONS: AgentProviderDefinition[] = [];
 
 interface ControlledAgentControlsProps {
   provider: string;
+  /** A running agent's account, shown when its provider has siblings it cannot switch to. */
+  accountLabel?: string;
   providerOptions?: AgentControlOption[];
   selectedProviderId?: string;
   onSelectProvider?: (providerId: string) => void;
@@ -150,6 +155,9 @@ export interface DraftAgentControlsProps {
   selectedThinkingOptionId: string;
   onSelectThinkingOption: (thinkingOptionId: string) => void;
   onApplyAgentProfile: DraftAgentProfileControls["applyProfile"];
+  /** Providers in the selected provider's family; shown as a picker when non-empty. */
+  accountOptions?: AgentControlOption[];
+  onSwitchAccount?: (provider: AgentProvider) => void;
   features?: AgentFeature[];
   onSetFeature?: (featureId: string, value: unknown) => void;
   onDropdownClose?: () => void;
@@ -236,7 +244,7 @@ function getFeatureIconColor(
   }
 }
 
-type ActiveSheet = "thinking" | "features" | null;
+type ActiveSheet = "thinking" | "features" | "account" | null;
 
 function resolveHasAnyControl({
   providerOptions,
@@ -261,7 +269,7 @@ function resolveHasAnyControl({
 }
 
 function toComboboxOptions(options: AgentControlOption[] | undefined): ComboboxOption[] {
-  return (options ?? []).map((o) => ({ id: o.id, label: o.label }));
+  return (options ?? []).map((o) => ({ id: o.id, label: o.label, description: o.description }));
 }
 
 function toThinkingControlOptions(options: AgentControlOption[] | undefined): AgentControlOption[] {
@@ -475,6 +483,7 @@ function buildOpenChangeHandler(
 
 function ControlledAgentControls({
   provider,
+  accountLabel,
   providerOptions,
   selectedProviderId,
   onSelectProvider,
@@ -737,6 +746,7 @@ function ControlledAgentControls({
         {!isCompact ? (
           <DesktopAgentControlsContent
             provider={provider}
+            accountLabel={accountLabel}
             providerOptions={providerOptions}
             selectedProviderId={selectedProviderId}
             modelOptions={modelOptions}
@@ -790,6 +800,12 @@ function ControlledAgentControls({
         ) : (
           <SheetAgentControlsContent
             provider={provider}
+            accountLabel={accountLabel}
+            accountOptions={comboboxProviderOptions}
+            selectedAccountId={selectedProviderId}
+            canSelectAccount={canSelectProvider}
+            displayAccount={displayProvider}
+            onSelectAccount={handleProviderSelect}
             selectedModelId={selectedModelId}
             selectedThinkingOptionId={selectedThinkingOptionId}
             features={features}
@@ -832,6 +848,7 @@ function ControlledAgentControls({
 
 interface DesktopAgentControlsContentProps {
   provider: string;
+  accountLabel?: string;
   providerOptions?: AgentControlOption[];
   selectedProviderId?: string;
   modelOptions?: AgentControlOption[];
@@ -895,6 +912,7 @@ function DesktopAgentControlsContent(props: DesktopAgentControlsContentProps) {
   const { t } = useTranslation();
   const {
     provider,
+    accountLabel,
     providerOptions,
     selectedProviderId,
     selectedModelId,
@@ -980,6 +998,13 @@ function DesktopAgentControlsContent(props: DesktopAgentControlsContentProps) {
             desktopPlacement="top-start"
           />
         </>
+      ) : null}
+      {!providerOptions?.length && accountLabel ? (
+        <View style={styles.modeBadge} testID="agent-account-label">
+          <Text style={styles.modeBadgeText} numberOfLines={1}>
+            {accountLabel}
+          </Text>
+        </View>
       ) : null}
 
       {canSelectModel ? (
@@ -1108,6 +1133,12 @@ function DesktopAgentControlsContent(props: DesktopAgentControlsContentProps) {
 
 interface SheetAgentControlsContentProps {
   provider: string;
+  accountLabel?: string;
+  accountOptions: ComboboxOption[];
+  selectedAccountId?: string;
+  canSelectAccount: boolean;
+  displayAccount: string;
+  onSelectAccount: (id: string) => void;
   selectedModelId?: string;
   selectedThinkingOptionId?: string;
   features?: AgentFeature[];
@@ -1152,6 +1183,12 @@ function SheetAgentControlsContent(props: SheetAgentControlsContentProps) {
   const { t } = useTranslation();
   const {
     provider,
+    accountLabel,
+    accountOptions,
+    selectedAccountId,
+    canSelectAccount,
+    displayAccount,
+    onSelectAccount,
     selectedModelId,
     selectedThinkingOptionId,
     features,
@@ -1188,10 +1225,31 @@ function SheetAgentControlsContent(props: SheetAgentControlsContentProps) {
   } = props;
 
   const thinkingAnchorRef = useRef<View | null>(null);
+  const accountAnchorRef = useRef<View | null>(null);
 
   const hasThinking = comboboxThinkingOptions.length > 0;
+  const hasAccountPicker = accountOptions.length > 0;
+  const shownAccount = hasAccountPicker ? displayAccount : accountLabel;
 
   const handleOpenThinking = useCallback(() => handleOpenSheet("thinking"), [handleOpenSheet]);
+  const handleOpenAccount = useCallback(() => handleOpenSheet("account"), [handleOpenSheet]);
+  const handleAccountSheetOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (nextOpen) {
+        handleOpenSheet("account");
+      } else {
+        handleCloseSheet();
+      }
+    },
+    [handleCloseSheet, handleOpenSheet],
+  );
+  const handleSelectAccountAndClose = useCallback(
+    (id: string) => {
+      onSelectAccount(id);
+      handleCloseSheet();
+    },
+    [handleCloseSheet, onSelectAccount],
+  );
   const handleThinkingSheetOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (nextOpen) {
@@ -1205,6 +1263,35 @@ function SheetAgentControlsContent(props: SheetAgentControlsContentProps) {
 
   const sheetControls = (
     <View style={styles.combinedSheetControls} testID="agent-controls-combined-sheet-controls">
+      {shownAccount ? (
+        <>
+          <AgentControlTrigger
+            ref={accountAnchorRef}
+            icon={AccountIcon}
+            surface="sheet"
+            label={t("agentControls.provider.fallback")}
+            value={shownAccount}
+            open={activeSheet === "account"}
+            onPress={handleOpenAccount}
+            disabled={disabled || !canSelectAccount}
+            accessibilityLabel={t("agentControls.provider.select")}
+            testID="agent-controls-account"
+          />
+          {hasAccountPicker ? (
+            <Combobox
+              options={accountOptions}
+              value={selectedAccountId ?? ""}
+              onSelect={handleSelectAccountAndClose}
+              searchable={false}
+              title={t("agentControls.provider.fallback")}
+              open={activeSheet === "account"}
+              onOpenChange={handleAccountSheetOpenChange}
+              anchorRef={accountAnchorRef}
+              presentation="push"
+            />
+          ) : null}
+        </>
+      ) : null}
       {hasThinking ? (
         <>
           <AgentControlTrigger
@@ -1621,6 +1708,13 @@ export const AgentControls = memo(function AgentControls({
 
   const agentProvider = agent?.provider;
   const activeModelId = modelSelection.activeModelId;
+  const accountLabel = useMemo(
+    () =>
+      buildProviderAccountOptions(snapshotEntries ?? [], agentProvider ?? null).find(
+        (option) => option.id === agentProvider,
+      )?.label,
+    [agentProvider, snapshotEntries],
+  );
 
   const handleSelectModel = useCallback(
     async (modelId: string) => {
@@ -1795,6 +1889,7 @@ export const AgentControls = memo(function AgentControls({
       {profileEditor.element}
       <ControlledAgentControls
         provider={agent.provider}
+        accountLabel={accountLabel}
         modelSelectorProviders={agentModelSelectorProviders}
         modelOptions={modelOptions}
         selectedModelId={modelSelection.activeModelId ?? undefined}
@@ -1840,6 +1935,8 @@ export function DraftAgentControls({
   selectedThinkingOptionId,
   onSelectThinkingOption,
   onApplyAgentProfile,
+  accountOptions,
+  onSwitchAccount,
   features,
   onSetFeature,
   onDropdownClose,
@@ -1850,6 +1947,17 @@ export function DraftAgentControls({
   modelSelectorServerId = null,
   isCompactLayout,
 }: DraftAgentControlsProps) {
+  const accountUsage = useProviderUsageDescriptions(modelSelectorServerId);
+  const describedAccountOptions = useMemo(
+    () =>
+      accountOptions?.map((option) => ({
+        id: option.id,
+        label: option.label,
+        description: accountUsage.get(option.id),
+      })),
+    [accountOptions, accountUsage],
+  );
+
   const mappedThinkingOptions = useMemo<AgentControlOption[]>(() => {
     return toThinkingControlOptions(thinkingOptions);
   }, [thinkingOptions]);
@@ -1913,6 +2021,9 @@ export function DraftAgentControls({
       {profileEditor.element}
       <ControlledAgentControls
         provider={selectedProvider ?? ""}
+        providerOptions={describedAccountOptions?.length ? describedAccountOptions : undefined}
+        selectedProviderId={selectedProvider ?? undefined}
+        onSelectProvider={onSwitchAccount}
         modelSelectorProviders={modelSelectorProviders}
         modelOptions={modelOptions}
         selectedModelId={selectedModel}

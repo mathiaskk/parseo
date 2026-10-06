@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { AgentProvider } from "@getpaseo/protocol/agent-types";
 import type { UserComposerAttachment } from "@/attachments/types";
 import type { TextReplacement } from "@/composer/types";
 import type { DraftAgentControlsProps } from "@/composer/agent-controls";
@@ -287,6 +288,20 @@ export function useAgentInputDraft(input: UseAgentInputDraftInput): AgentInputDr
     [applyProfileFeatureValues, formState],
   );
 
+  // Switching account keeps the whole selection; only the credentials change.
+  const switchDraftAccount = useCallback(
+    (provider: AgentProvider) => {
+      applyDraftAgentProfile({
+        provider,
+        modelId: formState.selectedModel,
+        modeId: formState.selectedMode,
+        thinkingOptionId: formState.selectedThinkingOptionId,
+        featureValues: draftFeatureValues ?? {},
+      });
+    },
+    [applyDraftAgentProfile, draftFeatureValues, formState],
+  );
+
   const commandDraft = useMemo(
     () =>
       buildDraftCommandTarget({
@@ -321,6 +336,7 @@ export function useAgentInputDraft(input: UseAgentInputDraftInput): AgentInputDr
         features: draftFeatures,
         onSetFeature: setDraftFeatureValue,
         onApplyAgentProfile: applyDraftAgentProfile,
+        onSwitchAccount: switchDraftAccount,
       }),
       commandDraft,
     };
@@ -334,6 +350,7 @@ export function useAgentInputDraft(input: UseAgentInputDraftInput): AgentInputDr
     applyDraftAgentProfile,
     formState,
     setDraftFeatureValue,
+    switchDraftAccount,
     workingDir,
   ]);
 

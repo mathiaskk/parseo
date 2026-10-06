@@ -39,6 +39,7 @@ import {
 } from "./provider-registry.js";
 import { BUILTIN_PROVIDER_IDS } from "@getpaseo/protocol/provider-manifest";
 import { applyMutableProviderConfigToOverrides } from "../daemon-config-store.js";
+import { createProviderEnv } from "./provider-launch-config.js";
 import {
   formatProviderDiagnostic,
   formatProviderDiagnosticError,
@@ -179,6 +180,14 @@ interface ResolveDefaultModelOptions {
 export interface ProviderDiagnosticResult {
   provider: AgentProvider;
   diagnostic: string;
+}
+
+export interface ProviderUsageScope {
+  /** The configured provider whose launch env this is. */
+  providerId: AgentProvider;
+  /** The builtin it resolves to, which usage sources know how to read. */
+  provider: AgentProvider;
+  env: Record<string, string>;
 }
 
 export interface AgentManagerProviderState {
@@ -350,6 +359,42 @@ export class ProviderSnapshotManager {
 
   getProviderLabel(provider: AgentProvider): string {
     return this.generation.definitions[provider]?.label ?? provider;
+  }
+
+  /**
+   * The launch env of every enabled provider in a family that has custom members, e.g. builtin
+   * `claude` and a custom provider that extends it with its own CLAUDE_CONFIG_DIR. Usage sources
+   * read these to find each provider's login, including ones no running agent uses.
+   */
+  listProviderUsageScopes(): ProviderUsageScope[] {
+    const definitions = this.generation.definitions;
+    const rootOf = (providerId: AgentProvider): AgentProvider => {
+      let root = providerId;
+      while (definitions[root]?.derivedFromProviderId) {
+        root = definitions[root]!.derivedFromProviderId!;
+      }
+      return root;
+    };
+    const enabled = Object.entries(definitions).filter(([, definition]) => definition.enabled);
+    const familiesWithCustomMembers = new Set(
+      enabled
+        .filter(([, definition]) => definition.derivedFromProviderId)
+        .map(([providerId]) => rootOf(providerId)),
+    );
+    return enabled.flatMap(([providerId, definition]) => {
+      const root = rootOf(providerId);
+      if (!familiesWithCustomMembers.has(root)) return [];
+      return [
+        {
+          providerId,
+          provider: root,
+          env: createProviderEnv({
+            baseEnv: process.env,
+            runtimeSettings: definition.configuration?.runtimeSettings,
+          }),
+        },
+      ];
+    });
   }
 
   getAgentManagerProviderState(): AgentManagerProviderState {
@@ -849,6 +894,9 @@ export class ProviderSnapshotManager {
           status: definition.enabled ? "loading" : "unavailable",
           enabled: definition.enabled,
           source: custom ? "custom" : "builtin",
+          ...(definition.derivedFromProviderId
+            ? { extends: definition.derivedFromProviderId }
+            : {}),
           label: definition.label,
           description: definition.description,
           iconSvg: definition.iconSvg,

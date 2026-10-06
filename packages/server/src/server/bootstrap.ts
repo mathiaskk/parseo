@@ -623,6 +623,7 @@ export async function createPaseoDaemon(
     usageAgents: {
       hasAgent: (id) => agentManager.getAgent(id) !== null,
       usageSession: (id) => agentManager.usageSession(id),
+      providerScopes: () => providerSnapshotManager.listProviderUsageScopes(),
     },
     managedSources: new ManagedPluginSources(config.paseoHome, {
       enabled: config.pluginRegistryEnabled ?? false,

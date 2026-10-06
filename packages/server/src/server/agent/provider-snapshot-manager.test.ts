@@ -1502,8 +1502,8 @@ describe("ProviderSnapshotManager applyMutableProviderConfig", () => {
         manager
           .getSnapshot()
           .records.map(({ entry }) => entry)
-          .find((entry) => entry.provider === "zai-claude")?.source,
-      ).toBe("custom");
+          .find((entry) => entry.provider === "zai-claude"),
+      ).toMatchObject({ source: "custom", extends: "claude" });
     } finally {
       manager.destroy();
     }
