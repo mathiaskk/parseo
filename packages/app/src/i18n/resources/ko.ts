@@ -1191,6 +1191,10 @@ export const ko: TranslationResources = {
     pinned: {
       title: "고정됨",
     },
+    settled: {
+      title: "완료됨",
+      toggle: "완료됨 ({{count}})",
+    },
     host: {
       noHost: "호스트 없음",
       switchTitle: "호스트 전환",
@@ -1281,6 +1285,8 @@ export const ko: TranslationResources = {
         rename: "워크스페이스 이름 변경",
         pin: "상단에 고정",
         unpin: "고정 해제",
+        settle: "완료로 이동",
+        unsettle: "완료 해제",
         archive: "보관",
         archiveWorkspace: "워크스페이스 보관",
         hideFromSidebar: "사이드바에서 숨기기",

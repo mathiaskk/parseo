@@ -7,8 +7,10 @@ export interface SidebarWorkspaceGroup {
   key: string;
   label: string;
   rows: SidebarWorkspaceEntry[];
-  leading: { kind: "status"; bucket: StatusBucket };
+  leading: { kind: "status"; bucket: StatusBucket } | { kind: "settled" };
 }
+
+export const SETTLED_WORKSPACE_GROUP_KEY = "settled";
 
 export function statusWorkspaceGroups(groups: readonly StatusGroup[]): SidebarWorkspaceGroup[] {
   return groups.map((group) => ({

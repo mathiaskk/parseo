@@ -10,6 +10,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import {
+  Fragment,
   memo,
   useCallback,
   useMemo,
@@ -125,6 +126,7 @@ import type { ShortcutKey } from "@/utils/format-shortcut";
 import { useShortcutKeys } from "@/hooks/use-shortcut-keys";
 import { useKeyboardActionHandler } from "@/hooks/use-keyboard-action-handler";
 import { useWorkspaceReadState } from "@/hooks/use-workspace-read-state";
+import { useWorkspaceSettle } from "@/hooks/use-workspace-settle";
 import type { PrHint } from "@/git/use-pr-status-query";
 import {
   buildSidebarProjectRowModel,
@@ -157,6 +159,7 @@ const workspaceKeyExtractor = (workspace: SidebarWorkspacePlacement) => workspac
 const projectViewKeyExtractor = (project: SidebarProjectEntry) => project.viewKey;
 
 const WORKSPACE_STATUS_DOT_WIDTH = 14;
+const EMPTY_WORKSPACE_PLACEMENTS: SidebarWorkspacePlacement[] = [];
 const ThemedExternalLink = withUnistyles(ExternalLink);
 const ThemedLoadingSpinner = withUnistyles(LoadingSpinner);
 const ThemedPlus = withUnistyles(Plus);
@@ -288,6 +291,8 @@ interface WorkspaceRowInnerProps {
   archiveShortcutKeys?: ShortcutKey[][] | null;
   isPinned?: boolean;
   onTogglePin?: () => void;
+  isSettled?: boolean;
+  onToggleSettle?: () => void;
   reserveIdleStatusIndicatorSpace?: boolean;
 }
 
@@ -619,6 +624,8 @@ function WorkspaceRowRightGroup({
   onRename,
   isPinned,
   onTogglePin,
+  isSettled,
+  onToggleSettle,
 }: {
   workspace: SidebarWorkspaceEntry;
   backdrop: SidebarSurfaceBackdrop;
@@ -639,6 +646,8 @@ function WorkspaceRowRightGroup({
   onRename?: () => void;
   isPinned?: boolean;
   onTogglePin?: () => void;
+  isSettled?: boolean;
+  onToggleSettle?: () => void;
 }) {
   const workspacePath = workspace.workspaceDirectory ?? workspace.projectRootPath;
   const { t } = useTranslation();
@@ -693,6 +702,8 @@ function WorkspaceRowRightGroup({
                 archiveShortcutKeys={archiveShortcutKeys}
                 isPinned={isPinned}
                 onTogglePin={onTogglePin}
+                isSettled={isSettled}
+                onToggleSettle={onToggleSettle}
                 openInFileManagerPath={workspacePath}
               />
             ) : null}
@@ -1074,6 +1085,8 @@ function WorkspaceRowInner({
   archiveShortcutKeys,
   isPinned,
   onTogglePin,
+  isSettled,
+  onToggleSettle,
   reserveIdleStatusIndicatorSpace = true,
 }: WorkspaceRowInnerProps) {
   const isCompact = useIsCompactFormFactor();
@@ -1150,6 +1163,8 @@ function WorkspaceRowInner({
               archiveShortcutKeys={archiveShortcutKeys}
               isPinned={isPinned}
               onTogglePin={onTogglePin}
+              isSettled={isSettled}
+              onToggleSettle={onToggleSettle}
               openInFileManagerPath={workspace.workspaceDirectory}
               disabled={isArchiving}
               aria-selected={selected}
@@ -1197,6 +1212,8 @@ function WorkspaceRowInner({
                   onMarkAsUnread={onMarkAsUnread}
                   isPinned={isPinned}
                   onTogglePin={onTogglePin}
+                  isSettled={isSettled}
+                  onToggleSettle={onToggleSettle}
                 />
               </SidebarWorkspaceRowContent>
             </SidebarWorkspaceContextMenu>
@@ -1294,6 +1311,10 @@ function WorkspaceRowWithMenu({
     onToggleWorkspacePin(workspace);
   }, [onToggleWorkspacePin, workspace]);
   const onTogglePin = canPin ? handleTogglePin : undefined;
+  const { isSettled, toggleSettle: onToggleSettle } = useWorkspaceSettle({
+    serverId: workspace.serverId,
+    workspaceId: workspace.workspaceId,
+  });
 
   const archiveShortcutKeys = useShortcutKeys("archive-workspace");
   const { hasClearableAttention, canMarkUnread, clearAttention, markUnread } =
@@ -1352,6 +1373,8 @@ function WorkspaceRowWithMenu({
         archiveShortcutKeys={selected ? archiveShortcutKeys : null}
         isPinned={isPinned}
         onTogglePin={onTogglePin}
+        isSettled={isSettled}
+        onToggleSettle={onToggleSettle}
         reserveIdleStatusIndicatorSpace={reserveIdleStatusIndicatorSpace}
       />
       <WorkspaceRenameModal
@@ -1597,6 +1620,9 @@ function ProjectBlock({
     canToggle: canToggleWorkspaces,
     toggleExpanded: toggleWorkspacesExpanded,
   } = useLimitedSidebarGroup(project.workspaces);
+  const settledWorkspaces = project.settledWorkspaces ?? EMPTY_WORKSPACE_PLACEMENTS;
+  const [settledExpanded, setSettledExpanded] = useState(false);
+  const toggleSettledExpanded = useCallback(() => setSettledExpanded((current) => !current), []);
   const rowModel = useMemo(
     () =>
       buildSidebarProjectRowModel({
@@ -1749,7 +1775,7 @@ function ProjectBlock({
 
   let projectChildren = null;
   if (!collapsed) {
-    if (project.workspaces.length > 0) {
+    if (project.workspaces.length > 0 || settledWorkspaces.length > 0) {
       projectChildren = (
         <>
           <DraggableList
@@ -1772,6 +1798,28 @@ function ProjectBlock({
               onPress={toggleWorkspacesExpanded}
               testID={`sidebar-project-show-more-${project.viewKey}`}
             />
+          ) : null}
+          {settledWorkspaces.length > 0 ? (
+            <>
+              <SidebarGroupToggleRow
+                expanded={settledExpanded}
+                onPress={toggleSettledExpanded}
+                label={t("sidebar.settled.toggle", { count: settledWorkspaces.length })}
+                testID={`sidebar-project-settled-${project.viewKey}`}
+              />
+              {settledExpanded ? (
+                <View
+                  style={styles.workspaceListContainer}
+                  testID={`sidebar-project-settled-list-${project.viewKey}`}
+                >
+                  {settledWorkspaces.map((workspace) => (
+                    <Fragment key={workspace.workspaceKey}>
+                      {renderWorkspaceRow(workspace)}
+                    </Fragment>
+                  ))}
+                </View>
+              ) : null}
+            </>
           ) : null}
         </>
       );

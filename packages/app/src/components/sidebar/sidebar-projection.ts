@@ -19,7 +19,16 @@ import {
   type SidebarShortcutModel,
   type SidebarShortcutSection,
 } from "@/utils/sidebar-shortcuts";
-import { statusWorkspaceGroups, type SidebarWorkspaceGroup } from "./sidebar-labels";
+import {
+  SETTLED_WORKSPACE_GROUP_KEY,
+  statusWorkspaceGroups,
+  type SidebarWorkspaceGroup,
+} from "./sidebar-labels";
+import {
+  collectSettledAtByKey,
+  splitSettledProjects,
+  splitSettledWorkspaces,
+} from "./sidebar-settled";
 
 export interface SidebarProjection {
   pinnedGroups: PinnedSidebarGroups;
@@ -50,11 +59,17 @@ export interface SidebarProjectionInput {
 }
 
 export function buildSidebarProjection(input: SidebarProjectionInput): SidebarProjection {
-  const pinnedGroups = splitPinnedSidebarGroups({
+  // Pin wins over settle: a pinned chat stays in Pinned even when it is also settled.
+  const settledAtByKey = collectSettledAtByKey(input.workspaceEntriesByKey.values());
+  const splitPinned = splitPinnedSidebarGroups({
     projects: input.projects,
     keys: input.pinnedKeys,
     pinnedWorkspaceOrder: input.pinnedWorkspaceOrder,
   });
+  const pinnedGroups: PinnedSidebarGroups = {
+    ...splitPinned,
+    unpinnedProjects: splitSettledProjects(splitPinned.unpinnedProjects, settledAtByKey),
+  };
   const pinnedWorkspaceKeys = new Set(input.pinnedKeys.pinnedWorkspaceKeys);
   const unpinnedWorkspaces = Array.from(input.workspaceEntriesByKey.values()).filter(
     (workspace) => !pinnedWorkspaceKeys.has(workspace.workspaceKey),
@@ -62,7 +77,10 @@ export function buildSidebarProjection(input: SidebarProjectionInput): SidebarPr
   // One switch decides both what the list groups by and what the keyboard shortcuts walk, so the
   // two cannot disagree and a new grouping mode is a compile error here rather than a silent
   // fall-through to the project rows.
-  const workspaceGroups = buildWorkspaceGroups(input, unpinnedWorkspaces);
+  const workspaceGroups = buildWorkspaceGroups(
+    input,
+    splitSettledWorkspaces(unpinnedWorkspaces, settledAtByKey),
+  );
 
   const sections: SidebarShortcutSection[] = [];
   if (!input.pinnedCollapsed) {
@@ -77,10 +95,12 @@ export function buildSidebarProjection(input: SidebarProjectionInput): SidebarPr
     );
   } else {
     sections.push(
-      ...workspaceGroups.map((group) => ({
-        workspaces: group.rows,
-        collapsed: input.collapsedWorkspaceGroupKeys.has(group.key),
-      })),
+      ...workspaceGroups
+        .filter((group) => group.leading.kind !== "settled")
+        .map((group) => ({
+          workspaces: group.rows,
+          collapsed: input.collapsedWorkspaceGroupKeys.has(group.key),
+        })),
     );
   }
 
@@ -95,14 +115,27 @@ export function buildSidebarProjection(input: SidebarProjectionInput): SidebarPr
 /** Project mode keeps its project headers and groups nothing; status mode groups the rows. */
 function buildWorkspaceGroups(
   input: SidebarProjectionInput,
-  unpinnedWorkspaces: SidebarWorkspaceEntry[],
+  unpinnedWorkspaces: { active: SidebarWorkspaceEntry[]; settled: SidebarWorkspaceEntry[] },
 ): SidebarWorkspaceGroup[] {
   switch (input.groupMode) {
     case "project":
       return [];
-    case "status":
-      return statusWorkspaceGroups(
-        buildStatusGroups(unpinnedWorkspaces, input.projectNamesByViewKey, input.t),
+    case "status": {
+      const groups = statusWorkspaceGroups(
+        buildStatusGroups(unpinnedWorkspaces.active, input.projectNamesByViewKey, input.t),
       );
+      if (unpinnedWorkspaces.settled.length === 0) {
+        return groups;
+      }
+      return [
+        ...groups,
+        {
+          key: SETTLED_WORKSPACE_GROUP_KEY,
+          label: input.t("sidebar.settled.title"),
+          rows: unpinnedWorkspaces.settled,
+          leading: { kind: "settled" },
+        },
+      ];
+    }
   }
 }

@@ -1220,6 +1220,10 @@ export const es: TranslationResources = {
     pinned: {
       title: "Anclados",
     },
+    settled: {
+      title: "Resueltos",
+      toggle: "Resueltos ({{count}})",
+    },
     host: {
       noHost: "Sin anfitrión",
       switchTitle: "Cambiar de anfitrión",
@@ -1310,6 +1314,8 @@ export const es: TranslationResources = {
         rename: "Cambiar nombre del espacio de trabajo",
         pin: "Anclar arriba",
         unpin: "Desanclar",
+        settle: "Marcar como resuelto",
+        unsettle: "Reabrir",
         archive: "Archivo",
         archiveWorkspace: "Archivar espacio de trabajo",
         hideFromSidebar: "Ocultar de la barra lateral",

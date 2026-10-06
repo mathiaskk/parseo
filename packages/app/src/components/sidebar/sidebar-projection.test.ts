@@ -112,6 +112,28 @@ function twoProjectInput(groupMode: "project" | "status") {
   };
 }
 
+function settledInput(groupMode: "project" | "status") {
+  const active = makeWorkspace("active", "running");
+  const older = makeWorkspace("older");
+  const newer = makeWorkspace("newer");
+  const pinned = makeWorkspace("pinned");
+  older.entry.settledAt = "2026-07-01T12:00:00.000Z";
+  newer.entry.settledAt = "2026-07-02T12:00:00.000Z";
+  pinned.entry.settledAt = "2026-07-03T12:00:00.000Z";
+  const all = [active, older, newer, pinned];
+  return {
+    ...projectionInput({ groupMode }),
+    projects: [makeProject(all.map((workspace) => workspace.placement))],
+    pinnedKeys: {
+      pinnedWorkspaceKeys: [pinned.placement.workspaceKey],
+      pinnedAtByKey: { [pinned.placement.workspaceKey]: "2026-07-12T12:00:00.000Z" },
+    },
+    workspaceEntriesByKey: new Map(
+      all.map((workspace) => [workspace.entry.workspaceKey, workspace.entry]),
+    ),
+  };
+}
+
 describe("buildSidebarProjection", () => {
   // The rule that outlived the bug it was written for: a project icon is fetched per project, so
   // whatever a mode groups by, the rows it produces can only reference projects already covered.
@@ -173,6 +195,38 @@ describe("buildSidebarProjection", () => {
 
     expect(projection.shortcutModel.shortcutTargets).toEqual([
       { serverId: "srv", workspaceId: "unpinned" },
+    ]);
+  });
+
+  it("moves settled chats into the project's settled list, newest first, and stops numbering them", () => {
+    const projection = buildSidebarProjection(settledInput("project"));
+
+    const project = projection.pinnedGroups.unpinnedProjects[0];
+    expect(project?.workspaces.map((entry) => entry.workspaceId)).toEqual(["active"]);
+    expect(project?.settledWorkspaces?.map((entry) => entry.workspaceId)).toEqual([
+      "newer",
+      "older",
+    ]);
+    expect(projection.pinnedGroups.pinnedChats.map((entry) => entry.workspaceId)).toEqual([
+      "pinned",
+    ]);
+    expect(projection.shortcutModel.shortcutTargets).toEqual([
+      { serverId: "srv", workspaceId: "pinned" },
+      { serverId: "srv", workspaceId: "active" },
+    ]);
+  });
+
+  it("puts settled chats in a trailing Settled group in status mode", () => {
+    const projection = buildSidebarProjection(settledInput("status"));
+
+    expect(projection.workspaceGroups.map((group) => group.key)).toEqual(["running", "settled"]);
+    expect(projection.workspaceGroups[1]?.rows.map((entry) => entry.workspaceId)).toEqual([
+      "newer",
+      "older",
+    ]);
+    expect(projection.shortcutModel.shortcutTargets).toEqual([
+      { serverId: "srv", workspaceId: "pinned" },
+      { serverId: "srv", workspaceId: "active" },
     ]);
   });
 });

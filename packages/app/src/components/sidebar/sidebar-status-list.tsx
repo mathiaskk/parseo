@@ -49,6 +49,7 @@ import type { ShortcutKey } from "@/utils/format-shortcut";
 import { useShortcutKeys } from "@/hooks/use-shortcut-keys";
 import { useKeyboardActionHandler } from "@/hooks/use-keyboard-action-handler";
 import { useWorkspaceReadState } from "@/hooks/use-workspace-read-state";
+import { useWorkspaceSettle } from "@/hooks/use-workspace-settle";
 import {
   SidebarWorkspaceRowFrame,
   SidebarWorkspaceRowContent,
@@ -295,21 +296,90 @@ function StatusGroupList({
 }) {
   return (
     <>
-      {groups.map((group) => (
-        <StatusGroupRows
-          key={group.key}
-          group={group}
-          collapsed={collapsedWorkspaceGroupKeys.has(group.key)}
-          projectIconByProjectViewKey={projectIconByProjectViewKey}
-          shortcutIndex={shortcutIndex}
-          showShortcutBadges={showShortcutBadges}
-          onWorkspacePress={onWorkspacePress}
-          hostBadgeByServerId={hostBadgeByServerId}
-          supportsPinningByServerId={supportsPinningByServerId}
-          onToggleWorkspacePin={onToggleWorkspacePin}
-        />
-      ))}
+      {groups.map((group) =>
+        group.leading.kind === "settled" ? (
+          <SettledStatusGroupRows
+            key={group.key}
+            group={group}
+            projectIconByProjectViewKey={projectIconByProjectViewKey}
+            showShortcutBadges={showShortcutBadges}
+            onWorkspacePress={onWorkspacePress}
+            hostBadgeByServerId={hostBadgeByServerId}
+            supportsPinningByServerId={supportsPinningByServerId}
+            onToggleWorkspacePin={onToggleWorkspacePin}
+          />
+        ) : (
+          <StatusGroupRows
+            key={group.key}
+            group={group}
+            collapsed={collapsedWorkspaceGroupKeys.has(group.key)}
+            projectIconByProjectViewKey={projectIconByProjectViewKey}
+            shortcutIndex={shortcutIndex}
+            showShortcutBadges={showShortcutBadges}
+            onWorkspacePress={onWorkspacePress}
+            hostBadgeByServerId={hostBadgeByServerId}
+            supportsPinningByServerId={supportsPinningByServerId}
+            onToggleWorkspacePin={onToggleWorkspacePin}
+          />
+        ),
+      )}
     </>
+  );
+}
+
+function SettledStatusGroupRows({
+  group,
+  projectIconByProjectViewKey,
+  showShortcutBadges,
+  onWorkspacePress,
+  hostBadgeByServerId,
+  supportsPinningByServerId,
+  onToggleWorkspacePin,
+}: {
+  group: SidebarWorkspaceGroup;
+  projectIconByProjectViewKey: ReadonlyMap<string, string | null>;
+  showShortcutBadges: boolean;
+  onWorkspacePress?: () => void;
+  hostBadgeByServerId: ReadonlyMap<string, HostBadgeModel>;
+  supportsPinningByServerId: ReadonlyMap<string, boolean>;
+  onToggleWorkspacePin: ToggleSidebarWorkspacePin;
+}) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const toggleExpanded = useCallback(() => setExpanded((current) => !current), []);
+
+  return (
+    <View style={expanded ? styles.statusGroupBlockExpanded : undefined}>
+      <SidebarGroupToggleRow
+        expanded={expanded}
+        onPress={toggleExpanded}
+        label={t("sidebar.settled.toggle", { count: group.rows.length })}
+        testID="sidebar-status-group-settled"
+      />
+      {expanded ? (
+        <View
+          style={styles.statusWorkspaceListContainer}
+          testID={`sidebar-status-group-rows-${group.key}`}
+        >
+          {group.rows.map((workspace) => (
+            <StatusWorkspaceRow
+              key={workspace.workspaceKey}
+              workspace={workspace}
+              {...buildStatusRowProjectPresentation({
+                workspace,
+                projectIconByProjectViewKey,
+                hostBadgeByServerId,
+              })}
+              shortcutNumber={null}
+              showShortcutBadge={showShortcutBadges}
+              canPin={supportsPinningByServerId.get(workspace.serverId) === true}
+              onToggleWorkspacePin={onToggleWorkspacePin}
+              onWorkspacePress={onWorkspacePress}
+            />
+          ))}
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -466,7 +536,7 @@ function StatusGroupLeadingVisual({
   showChevron: boolean;
 }) {
   if (!showChevron) {
-    return <StatusGroupIcon bucket={leading.bucket} />;
+    return leading.kind === "status" ? <StatusGroupIcon bucket={leading.bucket} /> : null;
   }
   if (collapsed) {
     return <ThemedChevronRight size={14} uniProps={foregroundMutedColorMapping} />;
@@ -640,6 +710,10 @@ function StatusWorkspaceRowWithMenu({
     onToggleWorkspacePin(workspace);
   }, [onToggleWorkspacePin, workspace]);
   const onTogglePin = canPin ? handleTogglePin : undefined;
+  const { isSettled, toggleSettle: onToggleSettle } = useWorkspaceSettle({
+    serverId: workspace.serverId,
+    workspaceId: workspace.workspaceId,
+  });
 
   const archiveShortcutKeys = useShortcutKeys("archive-workspace");
   const { hasClearableAttention, canMarkUnread, clearAttention, markUnread } =
@@ -693,6 +767,8 @@ function StatusWorkspaceRowWithMenu({
         archiveShortcutKeys={selected ? archiveShortcutKeys : null}
         isPinned={isPinned}
         onTogglePin={onTogglePin}
+        isSettled={isSettled}
+        onToggleSettle={onToggleSettle}
         reserveIdleStatusIndicatorSpace={reserveIdleStatusIndicatorSpace}
         inStatusGroup={inStatusGroup}
         drag={drag}
@@ -731,6 +807,8 @@ interface StatusWorkspaceRowInnerProps {
   archiveShortcutKeys?: ShortcutKey[][] | null;
   isPinned?: boolean;
   onTogglePin?: () => void;
+  isSettled?: boolean;
+  onToggleSettle?: () => void;
   reserveIdleStatusIndicatorSpace?: boolean;
   /** Pinned rows are flat under their own header; status-group rows indent from theirs. */
   inStatusGroup?: boolean;
@@ -778,6 +856,8 @@ function StatusWorkspaceRowInnerContent({
   archiveShortcutKeys,
   isPinned,
   onTogglePin,
+  isSettled,
+  onToggleSettle,
   reserveIdleStatusIndicatorSpace = true,
   inStatusGroup = true,
   isDragging = false,
@@ -878,6 +958,8 @@ function StatusWorkspaceRowInnerContent({
               archiveShortcutKeys={archiveShortcutKeys}
               isPinned={isPinned}
               onTogglePin={onTogglePin}
+              isSettled={isSettled}
+              onToggleSettle={onToggleSettle}
               openInFileManagerPath={workspace.workspaceDirectory}
               disabled={isArchiving}
               accessibilityRole="button"
@@ -914,6 +996,8 @@ function StatusWorkspaceRowInnerContent({
                     reserveSlotWidth={reserveSlotWidth}
                     isPinned={isPinned}
                     onTogglePin={onTogglePin}
+                    isSettled={isSettled}
+                    onToggleSettle={onToggleSettle}
                     onCopyPath={onCopyPath}
                     onCopyBranchName={onCopyBranchName}
                     onRename={onRename}
@@ -945,6 +1029,8 @@ function StatusWorkspaceActionSlot({
   reserveSlotWidth,
   isPinned,
   onTogglePin,
+  isSettled,
+  onToggleSettle,
   onCopyPath,
   onCopyBranchName,
   onRename,
@@ -965,6 +1051,8 @@ function StatusWorkspaceActionSlot({
   reserveSlotWidth: boolean;
   isPinned?: boolean;
   onTogglePin?: () => void;
+  isSettled?: boolean;
+  onToggleSettle?: () => void;
   onCopyPath?: () => void;
   onCopyBranchName?: () => void;
   onRename?: () => void;
@@ -1005,6 +1093,8 @@ function StatusWorkspaceActionSlot({
             archiveShortcutKeys={archiveShortcutKeys}
             isPinned={isPinned}
             onTogglePin={onTogglePin}
+            isSettled={isSettled}
+            onToggleSettle={onToggleSettle}
           />
         ) : null}
       </SidebarWorkspaceTrailingActionOverlay>

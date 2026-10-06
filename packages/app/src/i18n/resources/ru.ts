@@ -1202,6 +1202,10 @@ export const ru: TranslationResources = {
     pinned: {
       title: "Закреплённые",
     },
+    settled: {
+      title: "Завершённые",
+      toggle: "Завершённые ({{count}})",
+    },
     host: {
       noHost: "Нет хоста",
       switchTitle: "Сменить хост",
@@ -1292,6 +1296,8 @@ export const ru: TranslationResources = {
         rename: "Переименовать рабочее пространство",
         pin: "Закрепить вверху",
         unpin: "Открепить",
+        settle: "Отметить как завершённое",
+        unsettle: "Вернуть",
         archive: "Архивировать",
         archiveWorkspace: "Архивировать рабочее пространство",
         hideFromSidebar: "Скрыть на боковой панели",

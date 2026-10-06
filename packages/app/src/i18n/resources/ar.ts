@@ -1184,6 +1184,10 @@ export const ar: TranslationResources = {
     pinned: {
       title: "المثبتة",
     },
+    settled: {
+      title: "المُنجزة",
+      toggle: "المُنجزة ({{count}})",
+    },
     host: {
       noHost: "لا مضيف",
       switchTitle: "تبديل المضيف",
@@ -1274,6 +1278,8 @@ export const ar: TranslationResources = {
         rename: "إعادة تسمية مساحة العمل",
         pin: "تثبيت في الأعلى",
         unpin: "إلغاء التثبيت",
+        settle: "نقل إلى المُنجزة",
+        unsettle: "إعادة من المُنجزة",
         archive: "أرشيف",
         archiveWorkspace: "أرشفة مساحة العمل",
         hideFromSidebar: "إخفاء من الشريط الجانبي",
