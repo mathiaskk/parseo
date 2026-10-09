@@ -427,38 +427,36 @@ function SidebarFooter({
 
   // One line of icons: Add project, Usage, Hosts, then Help and Settings at the end.
   return (
-    <UsageSidebarRoot>
-      <View style={styles.footerContainer} testID="sidebar-footer">
-        <SidebarFooterRows onBeforeNavigate={onBeforeNavigate} />
-        <View style={styles.sidebarFooter} testID="sidebar-footer-bottom-line">
-          <FooterIconButton
-            onPress={handleOpenProject}
-            testID="sidebar-add-project"
-            label={labels.addProject}
-            icon={FolderPlus}
-            shortcutKeys={newAgentKeys}
-            theme={theme}
-          />
-          <SidebarUsageIcon label={labels.usage} theme={theme} />
-          <SidebarHostPicker
-            theme={theme}
-            label={labels.hosts}
-            onAddHost={handleAddHost}
-            onOpenHostSettings={handleOpenHostSettings}
-          />
-          <View style={styles.footerSpacer} />
-          <SidebarHelpMenu />
-          <FooterIconButton
-            onPress={handleSettings}
-            testID="sidebar-settings"
-            label={labels.settings}
-            icon={Settings}
-            shortcutKeys={settingsKeys}
-            theme={theme}
-          />
-        </View>
+    <View style={styles.footerContainer} testID="sidebar-footer">
+      <SidebarFooterRows onBeforeNavigate={onBeforeNavigate} />
+      <View style={styles.sidebarFooter} testID="sidebar-footer-bottom-line">
+        <FooterIconButton
+          onPress={handleOpenProject}
+          testID="sidebar-add-project"
+          label={labels.addProject}
+          icon={FolderPlus}
+          shortcutKeys={newAgentKeys}
+          theme={theme}
+        />
+        <SidebarUsageIcon label={labels.usage} theme={theme} />
+        <SidebarHostPicker
+          theme={theme}
+          label={labels.hosts}
+          onAddHost={handleAddHost}
+          onOpenHostSettings={handleOpenHostSettings}
+        />
+        <View style={styles.footerSpacer} />
+        <SidebarHelpMenu />
+        <FooterIconButton
+          onPress={handleSettings}
+          testID="sidebar-settings"
+          label={labels.settings}
+          icon={Settings}
+          shortcutKeys={settingsKeys}
+          theme={theme}
+        />
       </View>
-    </UsageSidebarRoot>
+    </View>
   );
 }
 
@@ -554,77 +552,81 @@ function MobileSidebar({
   );
 
   return (
-    <MobilePanelOverlay
-      panel="agent-list"
-      closeGesture={closeGesture}
-      panelStyle={mobileSidebarInsetStyle}
-    >
-      <View style={styles.sidebarContent} pointerEvents="auto">
-        <WindowChromeSafeArea placement="below" />
-        <SidebarNavRows style={styles.sidebarHeaderGroup} onBeforeNavigate={closeSidebar} />
-        <WindowChromeSafeArea
-          placement="inline"
-          pointerEvents="box-none"
-          style={styles.mobileCloseButtonRow}
-        >
-          <Pressable
-            style={styles.mobileCloseButton}
-            onPress={closeSidebar}
-            testID="sidebar-close"
-            nativeID="sidebar-close"
-            accessible
-            accessibilityRole="button"
-            accessibilityLabel={labels.closeSidebar}
-            hitSlop={8}
+    <UsageSidebarRoot>
+      <MobilePanelOverlay
+        panel="agent-list"
+        closeGesture={closeGesture}
+        panelStyle={mobileSidebarInsetStyle}
+      >
+        <View style={styles.sidebarContent} pointerEvents="auto">
+          <WindowChromeSafeArea placement="below" />
+          <SidebarNavRows style={styles.sidebarHeaderGroup} onBeforeNavigate={closeSidebar} />
+          <WindowChromeSafeArea
+            placement="inline"
+            pointerEvents="box-none"
+            style={styles.mobileCloseButtonRow}
           >
-            {({ hovered, pressed }) => (
-              <X
-                size={theme.iconSize.md}
-                color={hovered || pressed ? theme.colors.foreground : theme.colors.foregroundMuted}
-              />
-            )}
-          </Pressable>
-        </WindowChromeSafeArea>
+            <Pressable
+              style={styles.mobileCloseButton}
+              onPress={closeSidebar}
+              testID="sidebar-close"
+              nativeID="sidebar-close"
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel={labels.closeSidebar}
+              hitSlop={8}
+            >
+              {({ hovered, pressed }) => (
+                <X
+                  size={theme.iconSize.md}
+                  color={
+                    hovered || pressed ? theme.colors.foreground : theme.colors.foregroundMuted
+                  }
+                />
+              )}
+            </Pressable>
+          </WindowChromeSafeArea>
 
-        <SidebarUsageCard onBeforeOpen={closeSidebar} />
+          <SidebarUsageCard />
 
-        {isInitialLoad && !hasActiveHostFilter ? (
-          <SidebarAgentListSkeleton />
-        ) : (
-          <SidebarWorkspaceList
-            collapsedProjectKeys={collapsedProjectKeys}
-            onToggleProjectCollapsed={toggleProjectCollapsed}
-            shortcutIndexByWorkspaceKey={shortcutIndexByWorkspaceKey}
-            groupMode={groupMode}
-            workspaceGroups={workspaceGroups}
-            projectIconTargets={projectIconTargets}
-            pinnedGroups={pinnedGroups}
-            projects={projects}
-            hasProjectsBeforeFilter={hasProjectsBeforeFilter}
-            hasActiveProjectFilter={hasActiveProjectFilter}
-            workspaceEntriesByKey={workspaceEntriesByKey}
-            isRefreshing={isManualRefresh && isRevalidating}
-            onRefresh={handleRefresh}
-            onWorkspacePress={handleWorkspacePress}
-            onAddProject={handleOpenProject}
-            onImportSession={handleImportSession}
-            parentGestureRef={closeGestureRef}
-            dragGestureHostActive={active}
-            listHeaderComponent={workspacesSectionHeaderElement}
+          {isInitialLoad && !hasActiveHostFilter ? (
+            <SidebarAgentListSkeleton />
+          ) : (
+            <SidebarWorkspaceList
+              collapsedProjectKeys={collapsedProjectKeys}
+              onToggleProjectCollapsed={toggleProjectCollapsed}
+              shortcutIndexByWorkspaceKey={shortcutIndexByWorkspaceKey}
+              groupMode={groupMode}
+              workspaceGroups={workspaceGroups}
+              projectIconTargets={projectIconTargets}
+              pinnedGroups={pinnedGroups}
+              projects={projects}
+              hasProjectsBeforeFilter={hasProjectsBeforeFilter}
+              hasActiveProjectFilter={hasActiveProjectFilter}
+              workspaceEntriesByKey={workspaceEntriesByKey}
+              isRefreshing={isManualRefresh && isRevalidating}
+              onRefresh={handleRefresh}
+              onWorkspacePress={handleWorkspacePress}
+              onAddProject={handleOpenProject}
+              onImportSession={handleImportSession}
+              parentGestureRef={closeGestureRef}
+              dragGestureHostActive={active}
+              listHeaderComponent={workspacesSectionHeaderElement}
+            />
+          )}
+
+          <SidebarFooter
+            theme={theme}
+            handleOpenProject={handleOpenProject}
+            handleSettings={handleSettings}
+            labels={labels}
+            handleAddHost={handleAddHost}
+            handleOpenHostSettings={handleOpenHostSettings}
+            onBeforeNavigate={closeSidebar}
           />
-        )}
-
-        <SidebarFooter
-          theme={theme}
-          handleOpenProject={handleOpenProject}
-          handleSettings={handleSettings}
-          labels={labels}
-          handleAddHost={handleAddHost}
-          handleOpenHostSettings={handleOpenHostSettings}
-          onBeforeNavigate={closeSidebar}
-        />
-      </View>
-    </MobilePanelOverlay>
+        </View>
+      </MobilePanelOverlay>
+    </UsageSidebarRoot>
   );
 }
 
@@ -735,81 +737,83 @@ function DesktopSidebar({
     [ownsTopLeft],
   );
   return (
-    <Animated.View
-      accessibilityElementsHidden={!active}
-      importantForAccessibility={active ? "auto" : "no-hide-descendants"}
-      pointerEvents={active ? "auto" : "none"}
-      style={desktopSidebarStyle}
-    >
-      <View style={desktopSidebarBorderStyle}>
-        <View style={styles.sidebarDragArea}>
-          {ownsTopLeft || DEV_BUILD_LABEL ? (
-            <View style={styles.desktopChromeRow}>
+    <UsageSidebarRoot>
+      <Animated.View
+        accessibilityElementsHidden={!active}
+        importantForAccessibility={active ? "auto" : "no-hide-descendants"}
+        pointerEvents={active ? "auto" : "none"}
+        style={desktopSidebarStyle}
+      >
+        <View style={desktopSidebarBorderStyle}>
+          <View style={styles.sidebarDragArea}>
+            {ownsTopLeft || DEV_BUILD_LABEL ? (
+              <View style={styles.desktopChromeRow}>
+                <TitlebarDragRegion />
+                {DEV_BUILD_LABEL ? (
+                  <View
+                    pointerEvents="none"
+                    style={styles.devBuildBadge}
+                    testID="dev-build-label"
+                    accessibilityLabel={`Development build: ${DEV_BUILD_LABEL}`}
+                  >
+                    <GitBranch size={12} color={theme.colors.accentForeground} />
+                    <Text numberOfLines={1} ellipsizeMode="tail" style={styles.devBuildBadgeText}>
+                      {DEV_BUILD_LABEL}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : (
               <TitlebarDragRegion />
-              {DEV_BUILD_LABEL ? (
-                <View
-                  pointerEvents="none"
-                  style={styles.devBuildBadge}
-                  testID="dev-build-label"
-                  accessibilityLabel={`Development build: ${DEV_BUILD_LABEL}`}
-                >
-                  <GitBranch size={12} color={theme.colors.accentForeground} />
-                  <Text numberOfLines={1} ellipsizeMode="tail" style={styles.devBuildBadgeText}>
-                    {DEV_BUILD_LABEL}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
+            )}
+            <SidebarNavRows style={sidebarHeaderGroupStyle} />
+          </View>
+
+          <SidebarUsageCard />
+
+          {isInitialLoad && !hasActiveHostFilter ? (
+            <SidebarAgentListSkeleton />
           ) : (
-            <TitlebarDragRegion />
+            <SidebarWorkspaceList
+              collapsedProjectKeys={collapsedProjectKeys}
+              onToggleProjectCollapsed={toggleProjectCollapsed}
+              shortcutIndexByWorkspaceKey={shortcutIndexByWorkspaceKey}
+              groupMode={groupMode}
+              workspaceGroups={workspaceGroups}
+              projectIconTargets={projectIconTargets}
+              pinnedGroups={pinnedGroups}
+              projects={projects}
+              hasProjectsBeforeFilter={hasProjectsBeforeFilter}
+              hasActiveProjectFilter={hasActiveProjectFilter}
+              workspaceEntriesByKey={workspaceEntriesByKey}
+              isRefreshing={isManualRefresh && isRevalidating}
+              onRefresh={handleRefresh}
+              onAddProject={handleOpenProject}
+              onImportSession={handleImportSession}
+              listHeaderComponent={workspacesSectionHeaderElement}
+            />
           )}
-          <SidebarNavRows style={sidebarHeaderGroupStyle} />
-        </View>
 
-        <SidebarUsageCard />
+          <SidebarCalloutSlot />
 
-        {isInitialLoad && !hasActiveHostFilter ? (
-          <SidebarAgentListSkeleton />
-        ) : (
-          <SidebarWorkspaceList
-            collapsedProjectKeys={collapsedProjectKeys}
-            onToggleProjectCollapsed={toggleProjectCollapsed}
-            shortcutIndexByWorkspaceKey={shortcutIndexByWorkspaceKey}
-            groupMode={groupMode}
-            workspaceGroups={workspaceGroups}
-            projectIconTargets={projectIconTargets}
-            pinnedGroups={pinnedGroups}
-            projects={projects}
-            hasProjectsBeforeFilter={hasProjectsBeforeFilter}
-            hasActiveProjectFilter={hasActiveProjectFilter}
-            workspaceEntriesByKey={workspaceEntriesByKey}
-            isRefreshing={isManualRefresh && isRevalidating}
-            onRefresh={handleRefresh}
-            onAddProject={handleOpenProject}
-            onImportSession={handleImportSession}
-            listHeaderComponent={workspacesSectionHeaderElement}
+          <SidebarFooter
+            theme={theme}
+            handleOpenProject={handleOpenProject}
+            handleSettings={handleSettings}
+            labels={labels}
+            handleAddHost={handleAddHost}
+            handleOpenHostSettings={handleOpenHostSettings}
           />
-        )}
 
-        <SidebarCalloutSlot />
-
-        <SidebarFooter
-          theme={theme}
-          handleOpenProject={handleOpenProject}
-          handleSettings={handleSettings}
-          labels={labels}
-          handleAddHost={handleAddHost}
-          handleOpenHostSettings={handleOpenHostSettings}
-        />
-
-        <SidebarResizeHandle
-          edge="right"
-          gesture={resizeGesture}
-          pressed={resizePressed}
-          testID="left-sidebar-resize-handle"
-        />
-      </View>
-    </Animated.View>
+          <SidebarResizeHandle
+            edge="right"
+            gesture={resizeGesture}
+            pressed={resizePressed}
+            testID="left-sidebar-resize-handle"
+          />
+        </View>
+      </Animated.View>
+    </UsageSidebarRoot>
   );
 }
 

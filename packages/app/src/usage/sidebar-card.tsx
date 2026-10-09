@@ -1,10 +1,8 @@
-import { router } from "expo-router";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Pressable, Text, View, type PressableStateCallbackType } from "react-native";
 import { StyleSheet } from "react-native-unistyles";
 import { builtinSidebarNavLabelKey } from "@/sidebar-nav/model";
-import { buildUsageRoute } from "@/utils/host-routes";
 import { useUsagePreferences } from "./display";
 import { useUsageHostId } from "./hosts";
 import { UsageMeter } from "./meter";
@@ -15,6 +13,7 @@ import {
   type SidebarUsageAccount,
   type SidebarUsageWindow,
 } from "./sidebar-card-model";
+import { useOpenSidebarUsage } from "./sidebar-item";
 import { UsageSourceIcon } from "./source-icon";
 
 function cardStyle({ hovered }: PressableStateCallbackType & { hovered?: boolean }) {
@@ -36,7 +35,7 @@ export function useProviderUsageDescriptions(serverId: string | null): Map<strin
  * Every account's session and weekly limits in one card above the workspaces, so several
  * subscriptions can be compared at a glance. Renders nothing until an account has data.
  */
-export function SidebarUsageCard({ onBeforeOpen }: { onBeforeOpen?: () => void } = {}) {
+export function SidebarUsageCard() {
   const { t } = useTranslation();
   const { preferences } = useUsagePreferences();
   const reports = useUsageHostReports(useUsageHostId());
@@ -44,10 +43,7 @@ export function SidebarUsageCard({ onBeforeOpen }: { onBeforeOpen?: () => void }
     () => resolveSidebarUsageAccounts(reports, preferences.displayAs),
     [preferences.displayAs, reports],
   );
-  const openUsage = useCallback(() => {
-    onBeforeOpen?.();
-    router.push(buildUsageRoute());
-  }, [onBeforeOpen]);
+  const openUsage = useOpenSidebarUsage();
   if (accounts.length === 0) return null;
   return (
     <View style={styles.container}>
