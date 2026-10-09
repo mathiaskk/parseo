@@ -1,0 +1,7 @@
+Fork release of mathiaskk/parseo, built on Paseo 0.11.1.
+
+Added
+- Added an account picker to the new-agent composer when several providers extend the same agent, such as two Claude subscriptions, and showed each running agent's account next to its model
+- Added a usage card above the workspaces in the sidebar with every account's session and weekly limits; it opens Usage
+
+Full notes: https://paseo.sh/changelog
