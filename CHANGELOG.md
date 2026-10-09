@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.11.2 - 2026-10-09
+
+Fork release of [mathiaskk/parseo](https://github.com/mathiaskk/parseo), built on Paseo 0.11.1.
+
+### Added
+
+- Added an account picker to the new-agent composer when several providers extend the same agent, such as two Claude subscriptions, and showed each running agent's account next to its model
+- Added a usage card above the workspaces in the sidebar with every account's session and weekly limits; it opens Usage
+- Added a Settled dropdown at the bottom of each project that holds workspaces you settle, until you unsettle them
+- Added skill pills for `/skill` tokens in sent messages
+
+### Fixed
+
+- Fixed the app and daemon showing an older version than the installed desktop release
+
 ## 0.11.1 - 2026-10-07
 
 ### Added
